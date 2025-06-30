@@ -72,7 +72,7 @@ stat_scalpmap <- function(mapping = NULL,
                           inherit.aes = TRUE,
                           grid_res = 200,
                           interpolate = FALSE,
-                          interp_limit = c("skirt", "head"),
+                          interp_limit = c("skirt", "head", "convex_hull"),
                           method = "biharmonic",
                           r = NULL,
                           ...) {
@@ -115,7 +115,7 @@ StatScalpmap <-
                                             r = NULL) {
 
                      interp_limit <- match.arg(interp_limit,
-                                               c("skirt", "head"))
+                                               c("skirt", "head", 'convex_hull'))
                      data <- aggregate(fill ~ x + y,
                                        data = data,
                                        FUN = mean)

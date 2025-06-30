@@ -277,6 +277,19 @@ biharmonic <- function(data,
                  nrow = grid_res,
                  ncol = grid_res))
 
+  lprec <- lpSolveAPI::make.lp(nrow = 0, ncol = nrow(data))
+  lpSolveAPI::lp.control(lprec, sense="min", epslevel = 'tight')
+  lpSolveAPI::set.objfn(lprec, numeric(nrow(data)))
+  lpSolveAPI::add.constraint(lprec, data$x, "=", NaN)
+  lpSolveAPI::add.constraint(lprec, data$y, "=", NaN)
+  lpSolveAPI::add.constraint(lprec, rep(1, nrow(data)), "=", 1)
+
+  fun <- function(p) {
+    lpSolveAPI::set.constr.value(lprec, constraints = 1, p[1]) # Adjust x constraint value
+    lpSolveAPI::set.constr.value(lprec, constraints = 2, p[2]) # Adjust y constraint value
+    return(solve(lprec) == 0)
+  }
+
   xy_coords <- unique(data[, c("x", "y")])
   xy <- xy_coords[, 1, drop = TRUE] + xy_coords[, 2, drop = TRUE] * sqrt(as.complex(-1))
   d <- matrix(rep(xy,
@@ -327,23 +340,26 @@ biharmonic <- function(data,
                         values_to = "fill",
                         names_transform = list(y = as.numeric))
 
+  # Check whether each grid point is in the convex hull defined by the elctrode locations. If not, do not plot fill.
+  data <- data[apply(cbind(c(data$x), c(data$y)), 1, fun), ]
+
   if (identical(interp_limit,
                 "head")) {
-     if (is.null(r)) {
-       circ_scale <- max_elec * 1.01
-     } else {
-       circ_scale <- r * 1.01
-     }
+    if (is.null(r)) {
+      circ_scale <- max_elec * 1.01
+    } else {
+      circ_scale <- r * 1.01
+    }
 
-   } else {
+  } else {
 
-     # add 20% or 20 mm buffer past furthest electrode, whichever is smaller
+    # add 20% or 20 mm buffer past furthest electrode, whichever is smaller
     if (r < max_elec) {
       circ_scale <- min(max_elec * 1.20, max_elec + 20)
     } else {
       circ_scale <- min(r * 1.20, r + 20)
     }
-   }
+  }
   data[sqrt(data$x ^ 2 + data$y ^ 2) <= circ_scale, ]
 
 }
@@ -373,6 +389,22 @@ fit_gam_topo <- function(data,
   data$fill <-  stats::predict(spline_smooth,
                                data,
                                type = "response")
+
+  lprec <- lpSolveAPI::make.lp(nrow = 0, ncol = nrow(data))
+  lpSolveAPI::lp.control(lprec, sense="min", epslevel = 'tight')
+  lpSolveAPI::set.objfn(lprec, numeric(nrow(data)))
+  lpSolveAPI::add.constraint(lprec, data$x, "=", NaN)
+  lpSolveAPI::add.constraint(lprec, data$y, "=", NaN)
+  lpSolveAPI::add.constraint(lprec, rep(1, nrow(data)), "=", 1)
+
+  fun <- function(p) {
+    lpSolveAPI::set.constr.value(lprec, constraints = 1, p[1]) # Adjust x constraint value
+    lpSolveAPI::set.constr.value(lprec, constraints = 2, p[2]) # Adjust y constraint value
+    return(solve(lprec) == 0)
+  }
+
+  # Check whether each grid point is in the convex hull defined by the elctrode locations. If not, do not plot fill.
+  data <- data[apply(cbind(c(data$x), c(data$y)), 1, fun), ]
 
   if (identical(interp_limit,
                 "head")) {
